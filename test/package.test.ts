@@ -7,7 +7,7 @@ describe('/package/:name/:version endpoint', () => {
   let port: number;
 
   beforeAll(async () => {
-    // IMP: The "start-app-and-return-promise" functionality shared in `app.ts` and `packages.test.ts` could be moved into a central utility module (the promise wrapping is unnecessary noise).
+    // IMP: The "start-app-and-return-promise" functionality `packages.test.ts` could be moved into a central utility module (the promise wrapping is unnecessary noise and it will probably be needed for other tests).
     server = await new Promise((resolve, reject) => {
       const server = createApp().listen(0, () => {
         const addr = server.address();
@@ -27,7 +27,7 @@ describe('/package/:name/:version endpoint', () => {
   });
 
   it('responds', async () => {
-    // PERF: One might argue that hitting an external service is a bad idea because it makes the tests slower and flakier. However, as an integration test it is actually quite useful in verifying the our service interacts correctly with registry.npmjs.org. We might consider adding a locally run npm registry (or mock web server) that is spun up for tests for fine-grained tests
+    // PERF: One might argue that hitting an external service is a bad idea because it makes the tests slower and flakier. However, as an integration test it is actually quite useful in verifying the our service interacts correctly with registry.npmjs.org. We might consider adding a locally run npm registry (or mock web server) that is spun up for for more fine-grained tests
     const packageName = 'react';
     const packageVersion = '16.13.0';
 

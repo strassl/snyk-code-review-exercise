@@ -17,17 +17,17 @@ export const getPackage: RequestHandler = async function (req, res, next) {
   // IMP: I'd personally try to unpack the request params get params in `app.ts`, so they are closer to the route definition and can be passed as a typed object to the request handler.
   const { name, version } = req.params;
 
-  // IMP: Having logic inside the request handler function is a bit of a smell. I'd recommend moving the logic into a separate (strongly-typed) function and reduce the request handler to calling this function and transforming it into a http response.
+  // IMP: Having logic here intermingles it with the request handler function . I'd recommend moving the logic into a separate (strongly-typed) function and reduce the request handler to calling this function and transforming it into a http response. The function call should communicate errors (by throwing or a result sum type) and be wrapped in a try/catch all as we see here.
   const dependencyTree = {};
   try {
-    // IMP: Move the registry URL into a constant (or into some kind of configuration if we want to replace it for a mock server)
-    // IMP: Use some kind of URL builder instead of constructing it ad-hoc using string concatenation. I think it might be sound in this case, but in the big picture it is just asking for trouble.
+    // IMP: Move the registry URL into a constant (or into some kind of configuration if we want to replace it for e.g. a mock server)
+    // IMP: Use some kind of URL builder instead of constructing it ad-hoc using string concatenation. I think it might be sound in this case, but in the big picture it is just asking for trouble (query parameters, fragments, ...).
     // IMP: Move the "fetch npm package" functionality into a separate function
     const npmPackage: NPMPackage = await got(
       `https://registry.npmjs.org/${name}`,
     ).json();
 
-    // COR: Passing an invalid version number (e.g. `curl http://127.0.0.1:3000/package/react/999 | jq`) results in a 500 error. This line assumes that the versions exists in the `npmVersion.versions` object. Fix by checking if it is `!= null` before use and returning 404 in case it is.
+    // COR: Passing an invalid version number (e.g. `curl http://127.0.0.1:3000/package/react/999 | jq`) results in a 500 error. This line assumes that the version exists in the `npmPackage.versions` object. Fix by checking if it is `!= null` before use and returning 404 in case it is.
     const dependencies: Record<string, string> =
       npmPackage.versions[version].dependencies ?? {};
     for (const [name, range] of Object.entries(dependencies)) {
@@ -52,7 +52,7 @@ async function getDependencies(name: string, range: string): Promise<Package> {
     - Secondly add a global caching layer to improve cross-request performance (also mentioned in the related issue). If we were to use the database-backed architecture we could even just use the database instead of an additional cache.
   */
 
-  // COR: Cycles in the dependency graph (apparently possible, although I didn't take the time to repro it - https://github.com/npm/npm/issues/2063) will result in an infinite loop (which also opens the service up to DoS attacks). An example would be `curl -v http://127.0.0.1:3000/package/npm/8.1.4`. Cycle detection can be done by simply passing the current dependency-path to the getDependencies function. However we need to decide how to handle cycles at the API level - changing the response to a flat list of dependencies with each containing the dependency path might be a possibility.
+  // COR: Cycles in the dependency graph (apparently possible, although I didn't take the time to repro it - https://github.com/npm/npm/issues/2063) will result in an infinite loop (which also opens the service up to DoS attacks). Cycle detection can be done by simply passing the current dependency-path to the getDependencies function. However we need to decide how to handle cycles at the API level - changing the response to a flat list of dependencies with each containing the dependency path might be a possibility.
 
   // IMP: Move the registry URL into a shared constant
   const npmPackage: NPMPackage = await got(
@@ -63,7 +63,7 @@ async function getDependencies(name: string, range: string): Promise<Package> {
   const dependencies: Record<string, Package> = {};
 
 
-  // IMP: I'd recommend explicit `!= null` checks instead of the `if(value)` test, since the shorthand will result in the value being coerced into a boolean (e.g. '' -> false, or 0 -> false) which is usually not what you really meant.
+  // IMP: I'd recommend explicit `!= null` checks instead of the `if(value)` test, since the shorthand will result in the value being coerced into a boolean (e.g. '' -> false, or 0 -> false) which is usually not what one intends or expects.
   if (v) {
     const newDeps = npmPackage.versions[v].dependencies;
     // PERF: These requests could be run concurrently using Promise.all(). However we'd have to make sure that we do not spawn a ridiculous amount of HTTP requests - ideally we'd use some kind of pooling to limit the maximum number.
