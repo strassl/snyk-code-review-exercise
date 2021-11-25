@@ -16,10 +16,3 @@ We would like to invite you to join us for a technical discussion and code colla
 
 ## Code Nitpicks
 - `tsConfig.json:10` I'd recommend getting rid of line 13 asap (`noImplicitAny: false`). In my experience making TS as strict as possible is a good idea.
-
-## Performance
-- .
-
-
-## Correctness
-- Cycles in the dependency graph (apparently possible, although I didn't take the time to repro it - https://github.com/npm/npm/issues/2063) will result in an infinite loop (which also opens the service up to DoS attacks). An example would be `curl -v http://127.0.0.1:3000/package/npm/8.1.4`. Cycle detection can be done by simply passing the current dependency-path to the getDependencies function. However we need to decide how to handle cycles at the API level - changing the response to a flat list of dependencies with each containing the dependency path might be a possibility. 
